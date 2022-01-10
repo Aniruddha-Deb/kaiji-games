@@ -76,19 +76,30 @@ end
  *)
 
 fun checkWin {strat=st, cards=(r,p,x), stars=s} = (s >= 3) andalso ((r+p+x) = 0);
-fun checkLose {strat=st, cards=(r,p,x), stars=s} = (s = 0)
+fun checkLose {strat=st, cards=(r,p,x), stars=s} = (s = 0) orelse ((s < 3) andalso ((r+p+x) = 0));
 fun checkStay r = not (checkWin r orelse checkLose r);
+
+fun matchup l = 
+let
+	val n = length l
+	val hn = n div 2
+in
+	if n mod 2 = 1 then 
+		([List.nth (l,hn)], ListPair.zip (List.take (l, hn), List.drop (l, hn+1)))
+	else
+		([], ListPair.zip (List.take (l, hn), List.drop (l, hn)))
+end
 
 fun simIter (winners,floor,losers) rng =
 let
 	val randomFloor = shuffle rng floor (length floor)
-	val matchups = ListPair.zip (List.take (floor, length(floor) div 2), List.drop (floor, length(floor) div 2))
+	val (leftover, matchups) = matchup floor
 	val results = List.map (play rng) matchups 
 	val (l,r) = ListPair.unzip results
 	val newFloor = l @ r
 	val newWinners = winners @ (List.filter checkWin newFloor)
 	val newLosers = losers @ (List.filter checkLose newFloor)
-	val nextFloor = List.filter checkStay newFloor
+	val nextFloor = leftover @ (List.filter checkStay newFloor)
 in
 	(newWinners, nextFloor, newLosers)
 end
@@ -97,7 +108,7 @@ fun rounds (w,f,l) rno cards rng =
 let
 	val _ = print ("Round " ^ Int.toString(rno) ^ ": " ^ ((Int.toString(length w)) ^ " people won, " ^ Int.toString(length f) ^ " people on the floor and " ^ (Int.toString(length l)) ^ " people lost.\n"))
 in
-	if rno = (cards*3) then (w,f@l) else (rounds (simIter (w,f,l) rng) (rno+1) cards rng)
+	if rno = (cards*4) then (w,f@l) else (rounds (simIter (w,f,l) rng) (rno+1) cards rng)
 end
 
 fun simulate n c =
